@@ -8,7 +8,7 @@ async function bootstrap() {
   
   // CORS enable with credentials support for HttpOnly cookies
   app.enableCors({
-    origin: 'http://localhost:3000', // Next.js frontend URL
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], // Next.js frontend URL
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Cookies allow karne ke liye lazmi hai
   }); 

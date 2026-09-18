@@ -49,13 +49,12 @@ interface BlogItem {
 }
 
 interface PageItem {
-  id: number;
-  title: string;
-  slug: string;
-  status: 'published' | 'draft' | 'trashed';
-  is_saved?: boolean;
-  created_at: string;
-  updated_at: string;
+  name: string;
+  path: string;
+  parentPage: string;
+  isIndexed: boolean;
+  status: 'PUBLISHED' | 'NOT INDEXED';
+  created_at?: string;
 }
 
 interface EventItem {
@@ -96,6 +95,8 @@ export default function DashboardPage() {
 
   const [pagesList, setPagesList] = useState<PageItem[]>([]);
   const [pageSearchQuery, setPageSearchQuery] = useState<string>('');
+  const [totalPagesPages, setTotalPagesPages] = useState<number>(1);
+  const [totalFilteredPagesCount, setTotalFilteredPagesCount] = useState<number>(0);
 
   const [blogs, setBlogs] = useState<BlogItem[]>([]);
   const [categories, setCategories] = useState<BlogCategory[]>([]);
@@ -150,7 +151,7 @@ export default function DashboardPage() {
   const [hoveredUrl, setHoveredUrl] = useState<{ url: string; x: number; y: number } | null>(null);
 
   const [currentPagePages, setCurrentPagePages] = useState(1);
-  const [itemsPerPagePages, setItemsPerPagePages] = useState(6);
+  const [itemsPerPagePages, setItemsPerPagePages] = useState(50);
   const [goToPageInputPages, setGoToPageInputPages] = useState('1');
   const [isPerPageOpenPages, setIsPerPageOpenPages] = useState(false);
   const perPageDropdownRefPages = useRef<HTMLDivElement>(null);
@@ -215,15 +216,9 @@ export default function DashboardPage() {
       setIsLoading(true);
       const queryParams = new URLSearchParams();
       
-      if (selectedFormType !== 'All Forms') {
-        queryParams.append('formType', selectedFormType);
-      }
-      if (leadFilter !== 'All Type') {
-        queryParams.append('status', leadFilter);
-      }
-      if (searchQuery.trim()) {
-        queryParams.append('search', searchQuery.trim());
-      }
+      if (selectedFormType !== 'All Forms') queryParams.append('formType', selectedFormType);
+      if (leadFilter !== 'All Type') queryParams.append('status', leadFilter);
+      if (searchQuery.trim()) queryParams.append('search', searchQuery.trim());
 
       queryParams.append('page', currentPageSub.toString());
       queryParams.append('limit', itemsPerPageSub.toString());
@@ -245,42 +240,41 @@ export default function DashboardPage() {
     }
   }, [selectedFormType, leadFilter, searchQuery, currentPageSub, itemsPerPageSub, processSubmissions]);
 
+  // FIXED: Leads ki API sirf tab chale jab activeTab === 'submissions' ho. Overview par initial load par bilkul run nahi hogi!
   useEffect(() => {
-    if (activeTab === 'submissions' || activeTab === 'overview') {
+    if (activeTab === 'submissions') {
       fetchLeads();
     }
-  }, [fetchLeads, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, currentPageSub, itemsPerPageSub, selectedFormType, leadFilter, searchQuery]);
 
-  const fetchPagesList = useCallback(async () => {
+  // Fetch pages from MySQL Database (Lazy Loaded only when Pages tab is clicked with no-store cache)
+  const fetchPagesList = useCallback(async (page = currentPagePages, limit = itemsPerPagePages, search = pageSearchQuery) => {
     try {
-      const res = await fetch('http://localhost:4000/admin/pages', { credentials: 'include' });
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      queryParams.append('limit', limit.toString());
+      if (search.trim()) queryParams.append('search', search.trim());
+
+      const res = await fetch(`http://localhost:4000/admin/pages?${queryParams.toString()}`, { 
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache' },
+        credentials: 'include',
+        cache: 'no-store'
+      });
       await handleApiResponse(res);
       if (res.ok) {
         const data = await res.json();
-        setPagesList(data.pages || []);
+        const rawPages = Array.isArray(data.pages) ? data.pages : (Array.isArray(data) ? data : []);
+        setPagesList(rawPages);
+        setTotalPagesPages(data.totalPages || 1);
+        setTotalFilteredPagesCount(data.total !== undefined ? data.total : rawPages.length);
       }
     } catch (e) {
       console.error('Error fetching pages:', e);
+      setPagesList([]);
     }
-  }, []);
-
-  const handleScanPages = async () => {
-    try {
-      setIsLoading(true);
-      const res = await fetch('http://localhost:4000/admin/pages/scan', { credentials: 'include' });
-      await handleApiResponse(res);
-      if (res.ok) {
-        const data = await res.json();
-        setPagesList(data.pages || []);
-        setMessage({ text: 'Pages scanned and synchronized successfully!', type: 'success' });
-      }
-    } catch (e) {
-      console.error('Error scanning pages:', e);
-      setMessage({ text: 'Failed to scan frontend pages.', type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [currentPagePages, itemsPerPagePages, pageSearchQuery]);
 
   const fetchEventsList = useCallback(async () => {
     try {
@@ -294,28 +288,6 @@ export default function DashboardPage() {
       console.error('Error fetching events:', e);
     }
   }, []);
-
-  const handleSavePageToDB = async (page: PageItem) => {
-    try {
-      const res = await fetch('http://localhost:4000/admin/pages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          title: page.title,
-          slug: page.slug,
-          isExistingLink: true
-        })
-      });
-      await handleApiResponse(res);
-      if (res.ok) {
-        setPagesList(prev => prev.map(p => p.slug === page.slug ? { ...p, is_saved: true } : p));
-        setMessage({ text: `Page "${page.title}" saved to database successfully!`, type: 'success' });
-      }
-    } catch (err) {
-      console.error("Error saving page to DB:", err);
-    }
-  };
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -343,6 +315,7 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // INITIAL LOAD: Sirf aur sirf Users fetch honge, baaqi koi bhi API initial load par hit nahi hogi!
   useEffect(() => {
     async function fetchInitialData() {
       try {
@@ -355,14 +328,6 @@ export default function DashboardPage() {
           setUserName(uData.full_name || uData.name || 'Muhammad Hamza Amin');
           setUserEmail(uData.email || 'm.hamzaamin90200@gmail.com');
 
-          await Promise.all([
-            fetchLeads(),
-            fetchPagesList(),
-            fetchCategories(),
-            fetchBlogsList(),
-            fetchEventsList()
-          ]);
-
           if (currentRole === 'Super-Admin') {
             const usersRes = await fetch('http://localhost:4000/auth/users', { credentials: 'include' });
             await handleApiResponse(usersRes);
@@ -373,17 +338,6 @@ export default function DashboardPage() {
                 name: u.full_name || u.name || 'N/A'
               }));
               setAllUsers(formattedUsers);
-            }
-
-            try {
-              const data = await authService.getPendingRequests();
-              const formattedRequests = (Array.isArray(data) ? data : (data.requests || [])).map((req: any) => ({
-                ...req,
-                name: req.full_name || req.name || 'N/A'
-              }));
-              setRequests(formattedRequests);
-            } catch (error) {
-              console.error("Error fetching pending requests:", error);
             }
           }
         } else {
@@ -396,7 +350,8 @@ export default function DashboardPage() {
       }
     }
     fetchInitialData();
-  }, [fetchLeads, fetchPagesList, fetchCategories, fetchBlogsList, fetchEventsList]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -419,24 +374,13 @@ export default function DashboardPage() {
     setActiveTab(tab);
     setIsSidebarOpen(false);
     setMessage({ text: '', type: '' });
-    setCurrentPageReq(1);
-    setCurrentPageSub(1);
-    setCurrentPagePages(1);
-    setCurrentPageUsers(1);
-    setCurrentPageBlogs(1);
-    setCurrentPageEvents(1);
-    setSelectedIds([]);
-    setUserSearchQuery('');
-    setRequestSearchQuery('');
-    setBlogSearchQuery('');
-    setPageSearchQuery('');
-    setCategorySearchQuery('');
-    setEventSearchQuery('');
-
+    
     if (tab === 'submissions') {
+      setCurrentPageSub(1);
       await fetchLeads();
     } else if (tab === 'all-pages') {
-      await fetchPagesList();
+      setCurrentPagePages(1);
+      await fetchPagesList(1, itemsPerPagePages);
     } else if (tab === 'all-blogs') {
       await Promise.all([fetchBlogsList(), fetchCategories()]);
     } else if (tab === 'add-blog') {
@@ -446,7 +390,7 @@ export default function DashboardPage() {
     } else if (tab === 'all-events') {
       await fetchEventsList();
     } else if (tab === 'add-event') {
-      await fetchPagesList();
+      await fetchPagesList(1, itemsPerPagePages);
     } else if (tab === 'requests' && userRole === 'Super-Admin') {
       try {
         const data = await authService.getPendingRequests();
@@ -474,7 +418,45 @@ export default function DashboardPage() {
         console.error("Error fetching users:", error);
       }
     }
-  }, [fetchLeads, fetchPagesList, fetchBlogsList, fetchCategories, fetchEventsList, userRole]);
+  }, [fetchLeads, fetchPagesList, fetchBlogsList, fetchCategories, fetchEventsList, userRole, itemsPerPagePages]);
+
+  // Manual GitHub Sync Triggered ONLY by Scan Button Click
+  const handleScanPages = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('http://localhost:4000/admin/pages/scan', { credentials: 'include' });
+      await handleApiResponse(res);
+      if (res.ok) {
+        setMessage({ text: 'GitHub repository successfully synchronized with database!', type: 'success' });
+        fetchPagesList(currentPagePages, itemsPerPagePages);
+      }
+    } catch (e) {
+      console.error('Error scanning pages:', e);
+      setMessage({ text: 'Failed to synchronize with GitHub.', type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSavePageToDB = async (page: PageItem) => {
+    try {
+      const res = await fetch('http://localhost:4000/admin/pages/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify([{ name: page.name, path: page.path }])
+      });
+      await handleApiResponse(res);
+      if (res.ok) {
+        setPagesList(prev => prev.map(p => p.path === page.path ? { ...p, isIndexed: true, status: 'PUBLISHED', created_at: new Date().toISOString() } : p));
+        setMessage({ text: `Page "${page.name}" and its hierarchy saved to database successfully!`, type: 'success' });
+        fetchPagesList(currentPagePages, itemsPerPagePages);
+      }
+    } catch (err) {
+      console.error("Error saving page to DB:", err);
+      setMessage({ text: 'Failed to save page to database.', type: 'error' });
+    }
+  };
 
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1015,7 +997,7 @@ export default function DashboardPage() {
   const filteredTargetPages = useMemo(() => {
     return pagesList.filter(p => {
       const q = targetPageSearchQuery.toLowerCase().trim();
-      return !q || (p.title || '').toLowerCase().includes(q) || (p.slug || '').toLowerCase().includes(q);
+      return !q || (p.name || '').toLowerCase().includes(q) || (p.path || '').toLowerCase().includes(q);
     });
   }, [pagesList, targetPageSearchQuery]);
 
@@ -1026,22 +1008,12 @@ export default function DashboardPage() {
     { label: `Trashed`, value: 'Trashed' },
   ];
 
-  const filteredPages = useMemo(() => {
-    return pagesList.filter((p) => {
-      if (!pageSearchQuery.trim()) return true;
-      const q = pageSearchQuery.toLowerCase().trim();
-      return (p.title || '').toLowerCase().includes(q) || (p.slug || '').toLowerCase().includes(q);
-    });
-  }, [pagesList, pageSearchQuery]);
-
-  const totalPagesPages = Math.ceil(filteredPages.length / itemsPerPagePages) || 1;
-  const currentPages = useMemo(() => filteredPages.slice((currentPagePages - 1) * itemsPerPagePages, currentPagePages * itemsPerPagePages), [filteredPages, currentPagePages, itemsPerPagePages]);
-
   const handleGoToPageSubmitPages = (e: React.FormEvent) => {
     e.preventDefault();
     const pageNum = parseInt(goToPageInputPages);
     if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPagesPages) {
       setCurrentPagePages(pageNum);
+      fetchPagesList(pageNum, itemsPerPagePages);
     }
   };
 
@@ -1168,7 +1140,7 @@ export default function DashboardPage() {
       const segments = urlObj.pathname.split('/').filter(Boolean);
       if (segments.length === 0) return urlObj.hostname;
       const lastSegment = segments[segments.length - 1];
-      return lastSegment.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return lastSegment.replace(/[-_]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
     } catch {
       const parts = urlStr.split('/').filter(Boolean);
       return parts.length > 0 ? parts[parts.length - 1] : urlStr;
@@ -1361,7 +1333,7 @@ export default function DashboardPage() {
             </button>
             <h1 className="best-heading text-gray-800 truncate">
               {activeTab === 'overview' && 'Overview'}
-              {activeTab === 'all-pages' && 'All Pages'}
+              {activeTab === 'all-pages' && 'All Pages (VS Code Hierarchy)'}
               {activeTab === 'submissions' && 'Leads'}
               {activeTab === 'all-blogs' && 'All Blogs'}
               {activeTab === 'add-blog' && (editingBlogId ? 'Edit Blog' : 'Create New Blog')}
@@ -1467,7 +1439,7 @@ export default function DashboardPage() {
                       <span className="text-xs text-gray-400 font-medium">Total Blogs</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-bold text-gray-800">{pagesList.length}</p>
+                      <p className="text-xl font-bold text-gray-800">{totalFilteredPagesCount}</p>
                       <span className="text-[10px] text-gray-400 font-semibold uppercase">Total Pages</span>
                     </div>
                   </div>
@@ -1532,7 +1504,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="small-heading text-gray-900">Recent Pages</h3>
                         <span className="px-2 py-0.5 bg-blue-50 text-primary border border-blue-200 rounded-full text-xs font-bold">
-                          {pagesList.length}
+                          {totalFilteredPagesCount}
                         </span>
                       </div>
                       <button onClick={() => fetchData('all-pages')} className="text-xs font-bold text-primary hover:underline cursor-pointer">View All →</button>
@@ -1542,23 +1514,18 @@ export default function DashboardPage() {
                       {pagesList.slice(0, 5).length === 0 ? (
                         <p className="text-sm text-gray-400 py-8 text-center">No pages found in directory.</p>
                       ) : (
-                        pagesList.slice(0, 5).map((page) => {
-                          const pagePath = `/${page.slug}`;
-                          const dateObj = new Date(page.created_at);
-
+                        pagesList.slice(0, 5).map((page, idx) => {
+                          const pagePath = `/${page.path}`;
                           return (
-                            <div key={page.slug} className="py-3 flex items-center justify-between hover:bg-gray-50/60 px-3 rounded-2xl transition">
+                            <div key={idx} className="py-3 flex items-center justify-between hover:bg-gray-50/60 px-3 rounded-2xl transition">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-full bg-blue-50 text-primary font-bold text-xs flex items-center justify-center shrink-0">
                                   📄
                                 </div>
                                 <div className="max-w-[220px] sm:max-w-[260px]">
-                                  <p className="text-sm font-semibold text-gray-900 truncate" title={page.title}>{page.title}</p>
-                                  <p className="text-xs font-mono text-primary truncate">{pagePath}</p>
+                                  <p className="text-sm font-semibold text-gray-900 truncate" title={page.name}>{page.name}</p>
+                                  <p className="text-xs font-mono text-primary truncate">{page.path}</p>
                                 </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[10px] text-gray-400 mt-1">{!isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString() : 'N/A'}</p>
                               </div>
                             </div>
                           );
@@ -1574,7 +1541,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB: VIEW ALL PAGES */}
+          {/* TAB: VIEW ALL PAGES (SERVER-SIDE PAGINATION & TREE VIEW) */}
           {activeTab === 'all-pages' && (
             <div className="space-y-6 max-w-6xl mx-auto">
               {message.text && (
@@ -1586,9 +1553,9 @@ export default function DashboardPage() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden space-y-3 p-5">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gray-100 pb-4">
                   <div className="flex items-center gap-3">
-                    <h2 className="small-heading text-gray-900">Total Pages ({filteredPages.length})</h2>
+                    <h2 className="small-heading text-gray-900">Total Scanned Pages ({totalFilteredPagesCount})</h2>
                     
-                    {/* Scan / Recycle Button */}
+                    {/* Manual Scan / Refresh Button */}
                     <button
                       type="button"
                       onClick={handleScanPages}
@@ -1606,12 +1573,18 @@ export default function DashboardPage() {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </span>
                     <input
-                      type="text"
-                      value={pageSearchQuery}
-                      onChange={(e) => { setPageSearchQuery(e.target.value); setCurrentPagePages(1); }}
-                      placeholder="Search pages by name or URL slug..."
-                      className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 placeholder-gray-400 outline-none focus:bg-white focus:border-primary"
-                    />
+  type="text"
+  value={pageSearchQuery}
+  onChange={(e) => {
+    const queryVal = e.target.value;
+    setPageSearchQuery(queryVal);
+    setCurrentPagePages(1);
+    // Type karte hi foran backend se filtered pages fetch honge
+    fetchPagesList(1, itemsPerPagePages, queryVal);
+  }}
+  placeholder="Search pages by name or path..."
+  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 placeholder-gray-400 outline-none focus:bg-white focus:border-primary"
+/>
                     {pageSearchQuery && (
                       <button onClick={() => setPageSearchQuery('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 cursor-pointer">✕</button>
                     )}
@@ -1622,43 +1595,75 @@ export default function DashboardPage() {
                   <table className="w-full text-left border-collapse whitespace-nowrap text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        <th className="p-4">Page Title</th>
+                        <th className="p-4">Page Title / Name</th>
                         <th className="p-4">URL Path / Slug</th>
+                        <th className="p-4">Parent Page</th>
+                        <th className="p-4">Index Status</th>
                         <th className="p-4">Status</th>
                         <th className="p-4">Publish Date</th>
                         <th className="p-4 sticky right-0 bg-gray-50 z-20 shadow-[-4px_0_10px_-5px_rgba(0,0,0,0.1)] text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {currentPages.length === 0 ? (
-                        <tr><td colSpan={5} className="p-8 text-center text-gray-400">No pages found in database or matching search. Click the scan icon above to check frontend.</td></tr>
+                      {pagesList.length === 0 ? (
+                        <tr><td colSpan={7} className="p-8 text-center text-gray-400">No pages found in database or matching search. Click the scan icon above to check frontend.</td></tr>
                       ) : (
-                        currentPages.map((p) => {
-                          const pagePath = `/${p.slug}`;
+                        pagesList.map((p, idx) => {
+                          const isChild = p.parentPage && p.parentPage !== 'None';
+                          const pagePath = `/${p.path}`;
                           return (
-                            <tr key={p.slug} className="hover:bg-[#eef5ff]/60 transition">
-                              <td className="p-4 font-semibold text-gray-900">{p.title}</td>
-                              <td className="p-4 font-mono text-xs text-primary">{pagePath}</td>
+                            <tr key={idx} className="hover:bg-[#eef5ff]/60 transition">
+                              <td className="p-4 font-semibold text-gray-900 flex items-center gap-2">
+                                {isChild && <span className="text-gray-400 ml-4">└──</span>}
+                                <span>{p.name}</span>
+                              </td>
+                              <td className="p-4 font-mono text-xs text-primary">{p.path}</td>
+                              <td className="p-4 text-xs font-medium text-gray-600">{p.parentPage}</td>
                               <td className="p-4">
-                                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold uppercase">
-                                  {p.status || 'published'}
+                                {p.isIndexed ? (
+                                  <span className="px-2.5 py-1 bg-blue-50 text-primary border border-blue-200 rounded-full text-xs font-bold uppercase">
+                                    INDEXED
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold uppercase">
+                                    NOT INDEXED
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase ${
+                                  p.isIndexed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-400 border border-gray-200'
+                                }`}>
+                                  {p.isIndexed ? 'PUBLISHED' : 'NOT PUBLISHED'}
                                 </span>
                               </td>
-                              <td className="p-4 text-xs text-gray-500">{new Date(p.created_at).toLocaleDateString()}</td>
+                              <td className="p-4 text-xs text-gray-500">
+                                {p.isIndexed ? (p.created_at ? new Date(p.created_at).toLocaleDateString() : '9/18/2026') : '-'}
+                              </td>
                               <td className="p-4 sticky right-0 bg-white z-10 shadow-[-4px_0_10px_-5px_rgba(0,0,0,0.1)] text-center space-x-2">
-                                {!p.is_saved && (
+                                {!p.isIndexed && (
                                   <button 
                                     onClick={() => handleSavePageToDB(p)} 
                                     className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-lg transition duration-200 cursor-pointer border border-emerald-200 inline-flex items-center justify-center shadow-xs" 
-                                    title="Save to Database"
+                                    title="Save to Database (Index with Parent)"
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
                                   </button>
                                 )}
-                                <a href={pagePath} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 hover:bg-primary text-primary hover:text-white rounded-lg transition duration-200 cursor-pointer border border-blue-200 inline-flex items-center justify-center shadow-xs" title="Visit Live Page">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                {/* Eye / Preview Icon */}
+                                <a 
+                                  href={pagePath} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="p-2 bg-blue-50 hover:bg-primary text-primary hover:text-white rounded-lg transition duration-200 cursor-pointer border border-blue-200 inline-flex items-center justify-center shadow-xs" 
+                                  title="Visit Live Page"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
                                 </a>
                               </td>
                             </tr>
@@ -1671,7 +1676,7 @@ export default function DashboardPage() {
 
                 <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between bg-white px-4 sm:px-6 py-3 border border-gray-200 rounded-2xl shadow-sm text-sm text-gray-700 gap-3">
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-                    <span className="text-xs sm:text-sm font-medium">Total {filteredPages.length}</span>
+                    <span className="text-xs sm:text-sm font-medium">Total {totalFilteredPagesCount}</span>
                     
                     <div className="relative" ref={perPageDropdownRefPages}>
                       <button
@@ -1686,14 +1691,15 @@ export default function DashboardPage() {
                       </button>
 
                       {isPerPageOpenPages && (
-                        <div className="absolute left-0 bottom-full mb-2 w-32 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 space-y-1">
-                          {[6, 10, 20, 50, 100].map((opt) => (
+                        <div className="absolute left-0 bottom-full mb-2 w-36 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 space-y-1">
+                          {[50, 100, 200, 500, 1000, 5000].map((opt) => (
                             <div
                               key={opt}
                               onClick={() => {
                                 setItemsPerPagePages(opt);
                                 setCurrentPagePages(1);
                                 setIsPerPageOpenPages(false);
+                                fetchPagesList(1, opt);
                               }}
                               className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-medium cursor-pointer transition-colors ${
                                 itemsPerPagePages === opt ? 'bg-[#eef5ff] text-primary' : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
@@ -1709,7 +1715,11 @@ export default function DashboardPage() {
 
                   <div className="flex items-center gap-1.5 justify-center w-full sm:w-auto">
                     <button
-                      onClick={() => setCurrentPagePages(prev => Math.max(prev - 1, 1))}
+                      onClick={() => {
+                        const newPage = Math.max(currentPagePages - 1, 1);
+                        setCurrentPagePages(newPage);
+                        fetchPagesList(newPage, itemsPerPagePages);
+                      }}
                       disabled={currentPagePages === 1}
                       className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
@@ -1719,7 +1729,10 @@ export default function DashboardPage() {
                     {Array.from({ length: totalPagesPages }, (_, i) => i + 1).map((pageNum) => (
                       <button
                         key={pageNum}
-                        onClick={() => setCurrentPagePages(pageNum)}
+                        onClick={() => {
+                          setCurrentPagePages(pageNum);
+                          fetchPagesList(pageNum, itemsPerPagePages);
+                        }}
                         className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium cursor-pointer transition ${
                           currentPagePages === pageNum ? 'bg-primary text-white shadow-sm' : 'border border-gray-300 hover:bg-gray-100 text-gray-700'
                         }`}
@@ -1729,7 +1742,11 @@ export default function DashboardPage() {
                     ))}
 
                     <button
-                      onClick={() => setCurrentPagePages(prev => Math.min(prev + 1, totalPagesPages))}
+                      onClick={() => {
+                        const newPage = Math.min(currentPagePages + 1, totalPagesPages);
+                        setCurrentPagePages(newPage);
+                        fetchPagesList(newPage, itemsPerPagePages);
+                      }}
                       disabled={currentPagePages === totalPagesPages}
                       className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
@@ -2040,7 +2057,7 @@ export default function DashboardPage() {
                         className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-xs flex items-center justify-between text-sm font-medium text-gray-900 hover:border-gray-300 focus:outline-none transition cursor-pointer"
                       >
                         <span className="truncate">
-                          {eventTargetPage === '' ? 'Select Target Page' : (pagesList.find(p => `/${p.slug}` === eventTargetPage || p.slug === eventTargetPage)?.title || eventTargetPage)}
+                          {eventTargetPage === '' ? 'Select Target Page' : (pagesList.find(p => `/${p.name}` === eventTargetPage || p.name === eventTargetPage)?.name || eventTargetPage)}
                         </span>
                         <svg className={`w-4 h-4 text-gray-400 shrink-0 ml-2 transition-transform duration-200 ${isTargetPageDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -2067,11 +2084,11 @@ export default function DashboardPage() {
                             {filteredTargetPages.length === 0 ? (
                               <div className="px-3 py-2 text-xs text-gray-400 text-center">No pages found</div>
                             ) : (
-                              filteredTargetPages.map((p) => {
-                                const pagePath = `/${p.slug}`;
+                              filteredTargetPages.map((p, idx) => {
+                                const pagePath = `/${p.name}`;
                                 return (
                                   <div
-                                    key={p.slug}
+                                    key={idx}
                                     onClick={() => {
                                       setEventTargetPage(pagePath);
                                       setIsTargetPageDropdownOpen(false);
@@ -2081,7 +2098,7 @@ export default function DashboardPage() {
                                       eventTargetPage === pagePath ? 'bg-[#eef5ff] text-primary' : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
                                     }`}
                                   >
-                                    <span className="truncate">{p.title}</span>
+                                    <span className="truncate">{p.name}</span>
                                     <span className="text-[10px] font-mono text-gray-400 ml-2">({pagePath})</span>
                                   </div>
                                 );
@@ -2536,13 +2553,13 @@ export default function DashboardPage() {
                                     </>
                                   ) : (
                                     <>
-                                      <a href={blogPath} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 hover:bg-primary text-primary hover:text-white rounded-lg transition duration-200 cursor-pointer border border-blue-200 inline-flex items-center justify-center shadow-xs" title="View Live Blog">
+                                      <a href={blogPath} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 hover:bg-primary text-primary hover:text-white rounded-lg transition duration-200 cursor-pointer border border-emerald-200 inline-flex items-center justify-center shadow-xs" title="View Live Blog">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                       </a>
                                       <button onClick={() => handleEditBlogClick(b)} className="p-2 bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white rounded-lg transition duration-200 cursor-pointer border border-amber-200 inline-flex items-center justify-center shadow-xs" title="Edit Blog">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                       </button>
-                                      <button onClick={() => handleSoftTrashBlog(b.id)} className="p-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-lg transition duration-200 cursor-pointer border border-red-200 inline-flex items-center justify-center shadow-xs" title="Move to Trash">
+                                      <button onClick={() => handleSoftTrashBlog(b.id)} className="p-2 bg-red-50 hover:bg-red-600 text-white rounded-lg transition duration-200 cursor-pointer border border-red-200 inline-flex items-center justify-center shadow-xs" title="Move to Trash">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                       </button>
                                     </>
@@ -2987,7 +3004,7 @@ export default function DashboardPage() {
                         {userRole === 'Super-Admin' && (
                           <td className="p-4 text-center">
                             <button onClick={() => handleDeleteUser(u.id)} className="p-2 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white rounded-lg transition border border-red-200 cursor-pointer" title="Delete User">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2,2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                           </td>
                         )}

@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import * as mysql from 'mysql2/promise';
+import { DATABASE_CONNECTION } from './database.token.js';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
