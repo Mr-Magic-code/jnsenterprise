@@ -5,7 +5,7 @@ import { DatabaseService } from '../database/database.service.js';
 export class PagesService {
   constructor(private readonly dbService: DatabaseService) {}
 
-  // 1. BLINDINGLY FAST: Fetch pages directly from MySQL Database with Perfect Hierarchical Parent-Child Sorting
+  // 1. BLINDINGLY FAST: Fetch pages directly from MySQL Database with Perfect Recursive Hierarchical Sorting
   async getPagesFromDb(query?: { page?: string; limit?: string; search?: string }) {
     try {
       const pageNum = parseInt(query?.page || '1', 10);
@@ -23,15 +23,25 @@ export class PagesService {
       const rows: any = await this.dbService.query(dataQuery, queryParams);
       const allPages = Array.isArray(rows) ? rows : [];
 
-      // Hierarchical Sorting: Ensure every child page appears directly after its parent page
-      const parentPages = allPages.filter((p: any) => !p.parent_slug);
+      // Recursive Hierarchical Sorting to support deep nesting (Parent -> Child -> GrandChild)
+      const sortPagesRecursively = (parentSlug: string | null): any[] => {
+        let result: any[] = [];
+        const children = allPages.filter((p: any) => (p.parent_slug || null) === parentSlug);
+        
+        for (const child of children) {
+          result.push(child);
+          result.push(...sortPagesRecursively(child.slug));
+        }
+        return result;
+      };
+
+      const topLevelPages = allPages.filter((p: any) => !p.parent_slug);
       const sortedList: any[] = [];
 
-      parentPages.forEach((parent: any) => {
+      for (const parent of topLevelPages) {
         sortedList.push(parent);
-        const children = allPages.filter((p: any) => p.parent_slug === parent.slug);
-        sortedList.push(...children);
-      });
+        sortedList.push(...sortPagesRecursively(parent.slug));
+      }
 
       // Catch any remaining pages that didn't match the primary parent-child tree
       const remaining = allPages.filter((p: any) => !sortedList.includes(p));
