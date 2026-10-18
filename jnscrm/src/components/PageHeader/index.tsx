@@ -1,5 +1,4 @@
 'use client';
-
 import React from 'react';
 import ShareModal from '../ShareModal';
 export interface PageHeaderProps {
