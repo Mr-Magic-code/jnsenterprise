@@ -2,13 +2,12 @@
 
 import React from 'react';
 import ShareModal from '../ShareModal';
-import Breadcrumb from '@/app/_components/Breadcrumb';
 export interface PageHeaderProps {
   title: string;
   breadcrumbs?: any;
 }
 
-export default function PageHeader({ title, breadcrumbs }: PageHeaderProps) {
+export default function PageHeader({ title }: PageHeaderProps) {
   return (
     <div className="w-full font-sans">
       {/* 1. Dynamic Hero Blue Banner */}
