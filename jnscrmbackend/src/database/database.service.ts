@@ -8,10 +8,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     this.pool = mysql.createPool({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'jnseducation-db',
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT),
+      user: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
+      ssl: {
+        rejectUnauthorized: false,
+      },
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
