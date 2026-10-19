@@ -8,7 +8,13 @@ async function bootstrap() {
   
   // CORS enable with credentials support for HttpOnly cookies
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://jnsedu-website.vercel.app', 'http://127.0.0.1:3000' ], // Next.js frontend URL
+    // Next.js frontend URLs (extra ones can be added via FRONTEND_URLS, comma separated)
+    origin: [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://jnsedu-website.vercel.app',
+      ...(process.env.FRONTEND_URLS?.split(',').map((u) => u.trim()).filter(Boolean) ?? []),
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Cookies allow karne ke liye lazmi hai
   }); 
@@ -23,6 +29,6 @@ async function bootstrap() {
     transform: true,
   }));
 
-  await app.listen(4000);
+  await app.listen(process.env.PORT ?? 4000);
 }
 bootstrap();

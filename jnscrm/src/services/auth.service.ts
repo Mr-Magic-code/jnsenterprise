@@ -1,6 +1,6 @@
 // services/auth.service.ts
 
-const API_BASE_URL = 'https://jnsenterprise-65uv-alpha.vercel.app/auth';
+const API_BASE_URL = '/backend/auth';
 
 export const authService = {
   /**

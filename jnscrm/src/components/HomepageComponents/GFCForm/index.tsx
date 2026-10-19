@@ -253,7 +253,7 @@ export default function ConsultationForm({
       };
 
       // NestJS Backend Endpoint (Port 4000) jo local DB save ke sath CRM forwarding handle karega
-      const res = await fetch('https://jnsenterprise-65uv-alpha.vercel.app/leads', {
+      const res = await fetch('/backend/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
