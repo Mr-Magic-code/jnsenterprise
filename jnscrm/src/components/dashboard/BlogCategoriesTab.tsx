@@ -62,7 +62,7 @@ export default function CategoriesTab() {
         if (typeof blogService.updateCategory === 'function') {
           await blogService.updateCategory(editingId, name, slug);
         } else {
-          await fetch(`https://jnsenterprise-65uv-alpha.vercel.app/admin/blog-categories/${editingId}`, {
+          await fetch(`/backend/admin/blog-categories/${editingId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -103,7 +103,7 @@ export default function CategoriesTab() {
       if (typeof blogService.deleteCategory === 'function') {
         await blogService.deleteCategory(id);
       } else {
-        await fetch(`https://jnsenterprise-65uv-alpha.vercel.app/admin/blog-categories/${id}`, {
+        await fetch(`/backend/admin/blog-categories/${id}`, {
           method: 'DELETE',
           credentials: 'include',
         });

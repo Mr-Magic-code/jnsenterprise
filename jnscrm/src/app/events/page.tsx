@@ -24,12 +24,12 @@ export default function EventsPage() {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const res = await fetch('https://jnsenterprise-65uv-alpha.vercel.app/events/public', { credentials: 'include' });
+        const res = await fetch('/backend/events/public', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           setEvents(data.events || []);
         } else {
-          const adminRes = await fetch('https://jnsenterprise-65uv-alpha.vercel.app/admin/events', { credentials: 'include' });
+          const adminRes = await fetch('/backend/admin/events', { credentials: 'include' });
           if (adminRes.ok) {
             const adminData = await adminRes.json();
             setEvents(adminData.events || []);

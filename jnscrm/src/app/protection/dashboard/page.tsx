@@ -19,7 +19,7 @@ import AddBlogTab from '@/components/dashboard/AddBlogTab';
 import BlogCategoriesTab from '@/components/dashboard/BlogCategoriesTab';
 import { blogService } from '@/services/blogService';
 
-const API_BASE_URL = 'http://localhost:4000';
+const API_BASE_URL = '/backend';
 
 interface RequestUser {
   id: number;

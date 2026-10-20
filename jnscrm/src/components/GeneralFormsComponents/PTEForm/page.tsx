@@ -201,7 +201,7 @@ export default function PTEForm({
             };
 
             // Backend endpoint (ensure karein port wahi ho jo aapka backend use kar raha hai, jaise 4000 ya 3000)
-            const res = await fetch('https://jnsenterprise-65uv-alpha.vercel.app/leads', {
+            const res = await fetch('/backend/leads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

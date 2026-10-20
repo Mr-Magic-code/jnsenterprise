@@ -207,7 +207,7 @@ export default function UAEExpoForm({
         },
       };
 
-      const res = await fetch('https://jnsenterprise-65uv-alpha.vercel.app/leads', {
+      const res = await fetch('/backend/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
