@@ -125,7 +125,7 @@ export default function CategoriesTab() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Create / Edit Category Box */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-700 mb-5">
+        <h2 className="small-heading text-gray-700 mb-5">
           {editingId ? 'Edit Category' : 'Create New Category'}
         </h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -175,7 +175,7 @@ export default function CategoriesTab() {
       {/* Categories List Box */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-          <h2 className="text-lg font-semibold text-gray-700">
+          <h2 className="small-heading text-gray-700">
             Categories List ({filteredCategories.length})
           </h2>
           <input
