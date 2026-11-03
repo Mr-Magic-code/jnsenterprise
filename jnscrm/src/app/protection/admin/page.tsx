@@ -58,7 +58,7 @@ export default function AdminSignupPage() {
       <div className="hidden md:flex w-full md:w-[54%] lg:w-[40%] bg-[#0071f6] items-center justify-center p-6 sm:p-10 lg:p-14">
         <div className="w-full max-w-[620px] flex items-center justify-center text-center flex-col">
           <img
-            src="/images/left_img_admin.svg"
+            src="/images/left_img_login.svg"
             alt="Manager Registration Banner"
             className="mb-8"
           />
@@ -73,7 +73,7 @@ export default function AdminSignupPage() {
         {/* Form Container */}
         <div className="w-full max-w-[340px] flex flex-col items-center">
           <div className="w-full">
-            <h1 className="text-2xl font-normal text-[#0071f6] mb-5">
+            <h1 className="best-heading text-[#0071f6] mb-5">
               Manager Registration
             </h1>
 
