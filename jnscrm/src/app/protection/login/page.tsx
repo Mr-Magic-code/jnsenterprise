@@ -3,10 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { authService } from '@/services/auth.service';
-
-const LEFT_SIDE_SVG_URL =
-  'https://dev.jnsedu.co.uk/resources/views/theme/backend/default/assets/img/left_img_login.svg';
-
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -39,10 +35,10 @@ export default function LoginPage() {
     <div className="w-full flex flex-col md:flex-row bg-white md:min-h-screen font-sans">
       
       {/* Left Side: SVG Illustration Banner */}
-      <div className="hidden md:flex w-full md:w-[54%] lg:w-[40%] bg-[#ee7d65] items-center justify-center p-6 sm:p-10 lg:p-14">
+      <div className="hidden md:flex w-full md:w-[54%] lg:w-[40%] bg-[#0071f6] items-center justify-center p-6 sm:p-10 lg:p-14">
         <div className="w-full max-w-[620px] flex items-center justify-center">
           <img
-            src={LEFT_SIDE_SVG_URL}
+            src="/images/left_img_login.svg"
             alt="Get Ready to manage leads and students Smarter, Better, Faster"
           />
         </div>
@@ -56,7 +52,7 @@ export default function LoginPage() {
         {/* Form Container */}
         <div className="w-full max-w-[340px] flex flex-col items-center">
           <div className="w-full">
-            <h1 className="text-[24px] font-normal text-[#e5775c] mb-5">
+            <h1 className="text-[24px] font-normal text-[#0071f6] mb-5">
               Hello Again
             </h1>
 
@@ -76,8 +72,8 @@ export default function LoginPage() {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="mohsin.jameel@jns.com"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#e5775c] transition"
+                  placeholder="mohsin.jamil@jns.com"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#0071f6] transition"
                 />
               </div>
 
@@ -91,7 +87,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="•••••••••"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#e5775c] transition"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#0071f6] transition"
                 />
               </div>
 
@@ -99,7 +95,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-2.5 bg-[#e5775c] hover:bg-[#d6674c] active:bg-[#c6583d] text-white text-sm font-medium rounded shadow-sm transition duration-150 disabled:opacity-60 cursor-pointer flex justify-center items-center"
+                  className="w-full py-2.5 bg-[#0071f6] hover:bg-[#0071f6] active:bg-[#00447a] text-white text-sm font-medium rounded shadow-sm transition duration-150 disabled:opacity-60 cursor-pointer flex justify-center items-center"
                 >
                   {isLoading ? 'Logging in...' : 'Login Now'}
                 </button>
@@ -110,7 +106,7 @@ export default function LoginPage() {
             <div className="mt-6 space-y-1 text-[13px] text-gray-600">
               <p>
                 Don't have an account?{' '}
-                <Link href="/admin" className="text-[#e5775c] hover:underline font-medium">
+                <Link href="/protection/admin" className="text-[#0071f6] hover:underline font-medium">
                   Register here
                 </Link>
               </p>
