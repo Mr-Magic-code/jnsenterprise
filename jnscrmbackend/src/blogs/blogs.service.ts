@@ -4,10 +4,11 @@ import * as mysql from 'mysql2/promise';
 @Injectable()
 export class BlogsService {
   private pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'jnseducation-db',
+    host: (process.env.DB_HOST as string) || 'localhost',
+    user: (process.env.DB_USER as string) || 'root',
+    password: (process.env.DB_PASSWORD as string) || '',
+    database: (process.env.DB_NAME as string) || 'jnseducation-db',
+    port: Number(process.env.DB_PORT) || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -81,7 +82,6 @@ export class BlogsService {
 
       const [blogs] = await this.pool.execute(query, queryParams);
       
-      // Optimized count query using the same filters if needed, or total count
       const [countRows]: any = await this.pool.execute('SELECT COUNT(*) as total FROM blogs');
       const total = countRows[0]?.total || 0;
 
@@ -162,7 +162,8 @@ export class BlogsService {
       throw new InternalServerErrorException('Failed to update blog');
     }
   }
-async updateBlogStatus(id: number, status: string) {
+
+  async updateBlogStatus(id: number, status: string) {
     try {
       const now = new Date();
       await this.pool.execute(
@@ -175,6 +176,7 @@ async updateBlogStatus(id: number, status: string) {
       throw new InternalServerErrorException('Failed to update blog status');
     }
   }
+
   async deleteBlog(id: number) {
     try {
       await this.pool.execute('DELETE FROM blogs WHERE id = ?', [id]);
