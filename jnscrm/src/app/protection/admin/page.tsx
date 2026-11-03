@@ -3,10 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { authService } from '@/services/auth.service';
-
-const LEFT_SVG_URL =
-  'https://dev.jnsedu.co.uk/resources/views/theme/backend/default/assets/img/left_img_login.svg';
-
 export default function AdminSignupPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -59,10 +55,10 @@ export default function AdminSignupPage() {
     <div className="w-full flex flex-col md:flex-row bg-white md:min-h-screen">
       
       {/* Left Side: SVG Illustration Banner */}
-      <div className="hidden md:flex w-full md:w-[54%] lg:w-[40%] bg-[#ee7d65] items-center justify-center p-6 sm:p-10 lg:p-14">
+      <div className="hidden md:flex w-full md:w-[54%] lg:w-[40%] bg-[#0071f6] items-center justify-center p-6 sm:p-10 lg:p-14">
         <div className="w-full max-w-[620px] flex items-center justify-center text-center flex-col">
           <img
-            src={LEFT_SVG_URL}
+            src="/images/left_img_admin.svg"
             alt="Manager Registration Banner"
             className="mb-8"
           />
@@ -77,7 +73,7 @@ export default function AdminSignupPage() {
         {/* Form Container */}
         <div className="w-full max-w-[340px] flex flex-col items-center">
           <div className="w-full">
-            <h1 className="text-2xl font-normal text-[#e5775c] mb-5">
+            <h1 className="text-2xl font-normal text-[#0071f6] mb-5">
               Manager Registration
             </h1>
 
@@ -104,7 +100,7 @@ export default function AdminSignupPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Ali Khan"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#e5775c] transition"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#0071f6] transition"
                 />
               </div>
 
@@ -118,7 +114,7 @@ export default function AdminSignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="manager@domain.com"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#e5775c] transition"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#0071f6] transition"
                 />
               </div>
 
@@ -132,7 +128,7 @@ export default function AdminSignupPage() {
                   value={secretKey}
                   onChange={(e) => setSecretKey(e.target.value)}
                   placeholder="Enter manager secret key"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#e5775c] transition"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#0071f6] transition"
                 />
               </div>
 
@@ -146,7 +142,7 @@ export default function AdminSignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="•••••••••"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#e5775c] transition"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-800 text-sm focus:outline-none focus:border-[#0071f6] transition"
                 />
               </div>
 
@@ -154,7 +150,7 @@ export default function AdminSignupPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full px-6 py-2.5 bg-[#e5775c] hover:bg-[#d6674c] active:bg-[#c6583d] text-white text-sm font-medium rounded shadow-sm transition duration-150 disabled:opacity-60 cursor-pointer"
+                  className="w-full px-6 py-2.5 bg-[#0071f6] hover:bg-[#0071f6] active:bg-[#00447a] text-white text-sm font-medium rounded shadow-sm transition duration-150 disabled:opacity-60 cursor-pointer"
                 >
                   {isLoading ? 'Submitting...' : 'Request Access'}
                 </button>
